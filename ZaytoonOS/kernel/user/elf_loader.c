@@ -50,8 +50,12 @@ static bool valid_elf(const struct elf_header *header)
 
 int elf_load_image(const unsigned char *image, size_t size, struct elf_process *process)
 {
+    if (!image || !process || size < sizeof(struct elf_header)) {
+        return -1;
+    }
+
     const struct elf_header *header = (const struct elf_header *)image;
-    if (!valid_elf(header)) {
+    if (!valid_elf(header) || header->e_phoff + ((uint64_t)header->e_phnum * header->e_phentsize) > size) {
         return -1;
     }
 
@@ -64,6 +68,10 @@ int elf_load_image(const unsigned char *image, size_t size, struct elf_process *
 
     for (uint16_t i = 0; i < header->e_phnum; ++i) {
         const struct elf_phdr *ph = (const struct elf_phdr *)(image + header->e_phoff + i * header->e_phentsize);
+        if (ph->p_offset + ph->p_filesz > size) {
+            printk("[elf] segment outside image");
+            return -1;
+        }
         if (ph->p_type != PT_LOAD) {
             continue;
         }
@@ -99,6 +107,6 @@ int elf_load_image(const unsigned char *image, size_t size, struct elf_process *
 
     const uint64_t user_stack = 0x7FF00000ULL;
     paging_map_region(process->page_table, user_stack - 0x200000ULL, user_stack - 0x200000ULL, 0x200000ULL, PAGE_PRESENT | PAGE_WRITE | PAGE_USER);
-    process->stack = (void *)user_stack;
+    process->stack = user_stack;
     return 0;
 }

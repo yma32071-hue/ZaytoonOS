@@ -18,3 +18,8 @@ void schedule(void)
     }
     task_yield();
 }
+
+u64 sched_ticks(void)
+{
+    return tick_count;
+}

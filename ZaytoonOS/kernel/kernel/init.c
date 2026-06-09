@@ -6,6 +6,9 @@
 #include "kernel/kernel/task.h"
 #include "kernel/irq/irq.h"
 #include "kernel/arch/arch.h"
+#include "kernel/apps/capp.h"
+#include "kernel/fs/vfs.h"
+#include "kernel/shell/commandline.h"
 
 static void user_task(void)
 {
@@ -23,6 +26,10 @@ void kernel_init(void)
     console_init();
     mm_init();
     task_init();
+    capp_init();
+    vfs_init();
+    shell_init();
+    task_add(shell_run_demo, "shell");
     task_add(user_task, "foreground");
     task_add(kernel_idle, "idle");
     sched_init();
@@ -33,5 +40,7 @@ void kernel_init(void)
 
 void kernel_idle(void)
 {
-    arch_halt();
+    while (1) {
+        arch_halt();
+    }
 }

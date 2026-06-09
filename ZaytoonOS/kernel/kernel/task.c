@@ -126,12 +126,18 @@ void task_yield(void)
     }
 
     task_t *prev = current_task;
-    task_t *next = prev->next ? prev->next : task_list;
-    if (next == prev) {
+    task_t *next = prev;
+    do {
+        next = next->next ? next->next : task_list;
+    } while (next != prev && next->state == TASK_STOPPED);
+
+    if (next == prev || next->state == TASK_STOPPED) {
         return;
     }
 
-    prev->state = TASK_READY;
+    if (prev->state != TASK_STOPPED) {
+        prev->state = TASK_READY;
+    }
     current_task = next;
     current_task->state = TASK_RUNNING;
     printk("[task] switching to %s", current_task->name);

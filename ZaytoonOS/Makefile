@@ -1,4 +1,4 @@
-CC = gcc
+CC = gcc	
 CFLAGS = -std=gnu11 -nostdlib -ffreestanding -O2 -Wall -Wextra -fno-common -fno-builtin -fno-builtin-memcpy -fno-builtin-memset -I.
 LDFLAGS = -nostdlib -T linker.ld
 BUILD_DIR = build

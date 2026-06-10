@@ -1,33 +1,29 @@
-OUTPUT_FORMAT("elf_i386")
 ENTRY(kernel_start)
-
-PHDRS
-{
-    text PT_LOAD FLAGS(5);
-    data PT_LOAD FLAGS(6);
-}
+OUTPUT_FORMAT("elf32-i386")
+OUTPUT_ARCH(i386)
 
 SECTIONS
 {
+    /* Begin loading kernel at the 1MB mark */
     . = 0x100000;
 
-    .text : {
-        KEEP(*(.multiboot)) 
+    .text : ALIGN(4K) {
+        KEEP(*(.multiboot))
         *(.text*)
-    } :text
+    }
 
-    .rodata : {
+    .rodata : ALIGN(4K) {
         *(.rodata*)
-    } :text
+    }
 
-    .data : {
+    .data : ALIGN(4K) {
         *(.data*)
-    } :data
+    }
 
-    .bss : {
-        *(.bss*)
+    .bss : ALIGN(4K) {
         *(COMMON)
-    } :data
+        *(.bss*)
+    }
 
     _end = .;
     . = ALIGN(0x1000);

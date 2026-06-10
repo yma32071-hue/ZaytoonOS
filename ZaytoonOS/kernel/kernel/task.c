@@ -4,6 +4,9 @@
 #include "kernel/kernel/task.h"
 #include "kernel/kernel/printk.h"
 #include "kernel/mm/mm.h"
+#include <stdint.h>
+#include <stdbool.h>
+#include <stddef.h>
 
 #define KERNEL_TASK_STACK_SIZE 8192
 
@@ -31,9 +34,9 @@ void task_init(void)
     current_task = NULL;
 }
 
-static inline void load_cr3(uint64_t *cr3)
+static inline void load_cr3(uint32_t *cr3)
 {
-    uint64_t value = (uint64_t)cr3;
+    uint32_t value = (uint32_t)cr3;
     asm volatile("mov %0, %%cr3" :: "r"(value));
 }
 
@@ -42,14 +45,14 @@ void task_add(void (*entry)(void), const char *name)
     task_t *task = kmalloc(sizeof(task_t));
     void *stack = kmalloc(KERNEL_TASK_STACK_SIZE);
     if (!task || !stack) {
-        printk("[task] allocation failed for %s", name);
+        printk("[task] allocation failed for %s\n", name);
         return;
     }
 
-    u64 stack_top = (u64)stack + KERNEL_TASK_STACK_SIZE;
+    uint32_t stack_top = (uint32_t)stack + KERNEL_TASK_STACK_SIZE;
     stack_top &= ~0xFul;
-    stack_top -= sizeof(u64);
-    *(u64 *)stack_top = (u64)task_wrapper;
+    stack_top -= sizeof(uint32_t);
+    *(uint32_t *)stack_top = (uint32_t)task_wrapper;
 
     task->name = name;
     task->user_task = false;
@@ -60,13 +63,12 @@ void task_add(void (*entry)(void), const char *name)
     task->user_stack = 0;
     task->page_table = NULL;
     task->next = NULL;
-    task->context.r15 = 0;
-    task->context.r14 = 0;
-    task->context.r13 = 0;
-    task->context.r12 = 0;
-    task->context.rbx = 0;
-    task->context.rbp = 0;
-    task->context.rsp = stack_top;
+    
+    task->context.edi = 0;
+    task->context.esi = 0;
+    task->context.ebx = 0;
+    task->context.ebp = 0;
+    task->context.esp = stack_top;
 
     if (!task_list) {
         task_list = task;
@@ -78,14 +80,14 @@ void task_add(void (*entry)(void), const char *name)
         tail->next = task;
     }
 
-    printk("[task] registered %s", name);
+    printk("[task] registered %s\n", name);
 }
 
-void task_add_user(uint64_t entry, uint64_t stack, uint64_t *page_table, const char *name)
+void task_add_user(uint32_t entry, uint32_t stack, uint32_t *page_table, const char *name)
 {
     task_t *task = kmalloc(sizeof(task_t));
     if (!task) {
-        printk("[task] allocation failed for %s", name);
+        printk("[task] allocation failed for %s\n", name);
         return;
     }
 
@@ -98,13 +100,11 @@ void task_add_user(uint64_t entry, uint64_t stack, uint64_t *page_table, const c
     task->user_stack = stack;
     task->page_table = page_table;
     task->next = NULL;
-    task->context.r15 = 0;
-    task->context.r14 = 0;
-    task->context.r13 = 0;
-    task->context.r12 = 0;
-    task->context.rbx = 0;
-    task->context.rbp = 0;
-    task->context.rsp = 0;
+    task->context.edi = 0;
+    task->context.esi = 0;
+    task->context.ebx = 0;
+    task->context.ebp = 0;
+    task->context.esp = 0;
 
     if (!task_list) {
         task_list = task;
@@ -116,7 +116,7 @@ void task_add_user(uint64_t entry, uint64_t stack, uint64_t *page_table, const c
         tail->next = task;
     }
 
-    printk("[task] registered user task %s", name);
+    printk("[task] registered user task %s\n", name);
 }
 
 void task_yield(void)
@@ -140,7 +140,7 @@ void task_yield(void)
     }
     current_task = next;
     current_task->state = TASK_RUNNING;
-    printk("[task] switching to %s", current_task->name);
+    printk("[task] switching to %s\n", current_task->name);
     context_switch(&prev->context, &current_task->context);
 }
 
@@ -152,12 +152,8 @@ void task_run(void)
 
     current_task = task_list;
     current_task->state = TASK_RUNNING;
-    printk("[task] starting %s", current_task->name);
+    printk("[task] starting %s\n", current_task->name);
     if (current_task->user_task) {
         load_cr3(current_task->page_table);
-        printk("[task] entering user task %s", current_task->name);
-        enter_user_mode(current_task->user_entry, current_task->user_stack);
-    } else {
-        context_switch(&scheduler_context, &current_task->context);
-    }
-}
+        printk("[task] entering user task %s\n", current_task->name);
+        enter_

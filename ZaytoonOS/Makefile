@@ -1,6 +1,7 @@
 CC = gcc	
-CFLAGS = -std=gnu11 -nostdlib -ffreestanding -O2 -Wall -Wextra -fno-common -fno-builtin -fno-builtin-memcpy -fno-builtin-memset -I.
-LDFLAGS = -m32 -ffreestanding -nostdlib -no-pie -static -T linker.ld
+# Force the compiler to use absolute memory addresses instead of position-independent tables
+CFLAGS = -std=gnu11 -nostdlib -m32 -ffreestanding -O2 -Wall -Wextra -fno-common -fno-builtin -fno-pic -fno-pie -I.
+LDFLAGS = -m32 -Wl,-m,elf_i386 -ffreestanding -nostdlib -no-pie -static -T linker.ld
 BUILD_DIR = build
 APPCOMPILER_DIR = appcompiler
 GENERATED_CAPPS = kernel/apps/generated_capps.c

@@ -1,18 +1,16 @@
 #ifndef ZAYTOONOS_KERNEL_CONTEXT_H
 #define ZAYTOONOS_KERNEL_CONTEXT_H
 
-#include "kernel/types.h"
+#include <stdint.h> // The official standard header for explicit variable sizes
 
 typedef struct context {
-    u64 r15;
-    u64 r14;
-    u64 r13;
-    u64 r12;
-    u64 rbx;
-    u64 rbp;
-    u64 rsp;
+    uint32_t edi;
+    uint32_t esi;
+    uint32_t ebx;
+    uint32_t ebp;
+    uint32_t esp;
 } context_t;
 
-void context_switch(context_t *old, const context_t *new);
+void context_switch(context_t *old_ctx, const context_t *new_ctx);
 
 #endif /* ZAYTOONOS_KERNEL_CONTEXT_H */

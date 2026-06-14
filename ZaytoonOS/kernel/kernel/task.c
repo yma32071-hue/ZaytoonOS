@@ -153,7 +153,10 @@ void task_run(void)
     current_task = task_list;
     current_task->state = TASK_RUNNING;
     printk("[task] starting %s\n", current_task->name);
-    if (current_task->user_task) {
+        if (current_task->user_task) {
         load_cr3(current_task->page_table);
-        printk("[task] entering user task %s\n", current_task->name);
-        enter_
+        
+        // Call your assembly transition function directly
+        enter_user_mode(current_task->user_entry, current_task->user_stack);
+    }
+}

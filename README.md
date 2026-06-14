@@ -51,4 +51,14 @@ If your workspace requires a specific VNC target instead of the built-in virtual
 ## NOTE!!1!
 if you want to compile the .elf into an iso first put it in the boot folder in iso (NOT IN THE GRUB FOLDER) then run
 
-```grub-mkrescue -o /workspaces/ZaytoonOS/zaytoonos.iso /workspaces/ZaytoonOS/iso``` IF you have ```grub-common``` installed on linux, if you want to use windows, install WSL in powershell from ```wsl -install```
+```bash
+grub-mkrescue -o /workspaces/ZaytoonOS/zaytoonos.iso /workspaces/ZaytoonOS/iso
+
+```
+IF you have ```bash 
+
+            grub-common
+installed on linux, if you want to use windows, install WSL in powershell from ```bash 
+
+                                                                                  wsl -install
+                                                                                  

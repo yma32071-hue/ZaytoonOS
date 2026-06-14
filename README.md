@@ -61,6 +61,10 @@ IF you have
 
 grub-common
 ```
+if you don't have ```grub-common``` run
+```bash
+sudo apt update && sudo apt install grub-common
+```
 ## WINDOWS NOTE
 if you want to use windows, install WSL in powershell from 
 ```bash 

@@ -64,5 +64,5 @@ grub-common
 ## WINDOWS NOTE
 if you want to use windows, install WSL in powershell from 
 ```bash 
-wsl -install
-                                                                                  
+wsl -install                                                                                 
+```

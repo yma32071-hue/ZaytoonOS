@@ -14,7 +14,7 @@ SRC_S = $(sort $(wildcard $(addsuffix /*.S,$(SRC_DIRS))))
 OBJ = $(patsubst %.S,$(BUILD_DIR)/%.o,$(SRC_S)) $(patsubst %.c,$(BUILD_DIR)/%.o,$(SRC_C))
 
 DEP = $(OBJ:.o=.d)
-OUT = zaytoonkrnl.elf
+OUT = krnl.elf
 
 all: $(GENERATED_CAPPS) $(OUT)
 

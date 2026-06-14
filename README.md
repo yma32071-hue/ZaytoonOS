@@ -19,12 +19,6 @@ From the `ZaytoonOS` directory:
 
 This produces `zaytoonos.elf` from the kernel and root entry point.
 
-## Run
-
-From the `ZaytoonOS` directory:
-
-    make run
-
 ## noVNC
 
 A local noVNC setup is available in `novnc/`.
@@ -37,10 +31,11 @@ To launch a virtual X desktop and expose it through noVNC:
 Then open the forwarded browser URL for port `6080`.
 
 If your workspace requires a specific VNC target instead of the built-in virtual desktop, use:
-
+```bash
     cd novnc
     ./utils/novnc_proxy --vnc localhost:5901 --listen 6080
-
+```
+All of this is if you want to run ```qemu``` in Github CodeSpaces, YOU DO NOT HAVE TO DO THIS IN WINDOWS OR GUI LINUX!
 ## Structure
 
 - `kernel/` — kernel subsystem sources

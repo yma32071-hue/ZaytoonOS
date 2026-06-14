@@ -55,10 +55,14 @@ if you want to compile the .elf into an iso first put it in the boot folder in i
 grub-mkrescue -o /workspaces/ZaytoonOS/zaytoonos.iso /workspaces/ZaytoonOS/iso
 
 ```
-IF you have ```bash 
+IF you have
 
-            grub-common
-installed on linux, if you want to use windows, install WSL in powershell from ```bash 
+```bash 
 
-                                                                                  wsl -install
+grub-common
+```
+## WINDOWS NOTE
+if you want to use windows, install WSL in powershell from 
+```bash 
+wsl -install
                                                                                   

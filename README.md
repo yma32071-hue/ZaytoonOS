@@ -44,7 +44,7 @@ If your workspace requires a specific VNC target instead of the built-in virtual
 ## Structure
 
 - `kernel/` — kernel subsystem sources
-- `appcompiler/` - the `.capp` executor
+- `appcompiler/` - the `commandline.capp` compiling folder
 - `tools/` - the tools used
 - `maincompiler.c` — root startup wrapper that begins kernel execution
 - `Makefile` — build rules for the OS image

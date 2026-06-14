@@ -63,8 +63,11 @@ if you don't have ```grub-common``` run
 ```bash
 sudo apt update && sudo apt install grub-common
 ```
+in linux
+
 ## WINDOWS NOTE
 if you want to use windows, install WSL in powershell from 
 ```bash 
 wsl -install                                                                                 
 ```
+because compiling is only on linux

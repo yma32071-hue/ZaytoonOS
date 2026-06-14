@@ -57,12 +57,8 @@ if you want to compile the .elf into an iso first put it in the boot folder in i
 grub-mkrescue -o /workspaces/ZaytoonOS/zaytoonos.iso /workspaces/ZaytoonOS/iso
 
 ```
-IF you have
+IF you have ```grub-common```
 
-```bash 
-
-grub-common
-```
 if you don't have ```grub-common``` run
 ```bash
 sudo apt update && sudo apt install grub-common

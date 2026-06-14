@@ -19,12 +19,6 @@ From the `ZaytoonOS` directory:
 
 This produces `zaytoonos.elf` from the kernel and root entry point.
 
-## Run
-
-From the `ZaytoonOS` directory:
-
-    make run
-
 ## noVNC
 
 A local noVNC setup is available in `novnc/`.
@@ -37,13 +31,16 @@ To launch a virtual X desktop and expose it through noVNC:
 Then open the forwarded browser URL for port `6080`.
 
 If your workspace requires a specific VNC target instead of the built-in virtual desktop, use:
-
+```bash
     cd novnc
     ./utils/novnc_proxy --vnc localhost:5901 --listen 6080
-
+```
+All of this is if you want to run ```qemu``` in Github CodeSpaces, YOU DO NOT HAVE TO DO THIS IN WINDOWS OR GUI LINUX!
 ## Structure
 
 - `kernel/` — kernel subsystem sources
+- `appcompiler/` - the `commandline.capp` compiling folder
+- `tools/` - the tools used
 - `maincompiler.c` — root startup wrapper that begins kernel execution
 - `Makefile` — build rules for the OS image
 - `linker.ld` — bare-metal linker layout for the kernel
@@ -51,4 +48,21 @@ If your workspace requires a specific VNC target instead of the built-in virtual
 ## NOTE!!1!
 if you want to compile the .elf into an iso first put it in the boot folder in iso (NOT IN THE GRUB FOLDER) then run
 
-```grub-mkrescue -o /workspaces/ZaytoonOS/zaytoonos.iso /workspaces/ZaytoonOS/iso``` IF you have ```grub-common``` installed on linux, if you want to use windows, install WSL in powershell from ```wsl -install```
+```bash
+grub-mkrescue -o /workspaces/ZaytoonOS/zaytoonos.iso /workspaces/ZaytoonOS/iso
+
+```
+IF you have ```grub-common```
+
+if you don't have ```grub-common``` run
+```bash
+sudo apt update && sudo apt install grub-common
+```
+in linux
+
+## WINDOWS NOTE
+if you want to use windows, install WSL in powershell from 
+```bash 
+wsl -install                                                                                 
+```
+because compiling is only on linux

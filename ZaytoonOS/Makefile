@@ -1,6 +1,6 @@
-CC = gcc	
+CC = gcc        
 # Force the compiler to use absolute memory addresses instead of position-independent tables
-CFLAGS = -std=gnu11 -nostdlib -m32 -ffreestanding -O2 -Wall -Wextra -fno-common -fno-builtin -fno-pic -fno-pie -I.
+CFLAGS = -std=gnu11 -nostdlib -m32 -ffreestanding -O2 -Wall -Wextra -fno-common -fno-builtin -fno-pic -fno-pie -fno-stack-protector -mno-sse -mno-sse2 -mno-mmx -I.
 LDFLAGS = -m32 -Wl,-m,elf_i386 -ffreestanding -nostdlib -no-pie -static -T linker.ld
 BUILD_DIR = build
 APPCOMPILER_DIR = appcompiler

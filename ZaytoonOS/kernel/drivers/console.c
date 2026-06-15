@@ -5,8 +5,28 @@
 #define VGA_TEXT_BUFFER ((volatile uint16_t*)0xB8000)
 #define VGA_WIDTH 80
 #define VGA_HEIGHT 25
-#define VGA_DEFAULT_COLOR 0x07
+#define VGA_DEFAULT_COLOR 0x0A
 #define TAB_WIDTH 4
+
+/* Serial port (COM1) for debug output */
+#define SERIAL_PORT 0x3F8
+
+static void serial_init(void)
+{
+    outb(SERIAL_PORT + 1, 0x00);
+    outb(SERIAL_PORT + 3, 0x80);
+    outb(SERIAL_PORT + 0, 0x03);
+    outb(SERIAL_PORT + 1, 0x00);
+    outb(SERIAL_PORT + 3, 0x03);
+    outb(SERIAL_PORT + 2, 0xC7);
+    outb(SERIAL_PORT + 4, 0x0B);
+}
+
+static void serial_putc(char c)
+{
+    while ((inb(SERIAL_PORT + 5) & 0x20) == 0) {}
+    outb(SERIAL_PORT, (uint8_t)c);
+}
 
 static uint16_t cursor_position = 0;
 
@@ -36,7 +56,10 @@ static void console_scroll(void)
 
 static void console_putc(char c)
 {
+    serial_putc(c);
+
     if (c == '\n') {
+        serial_putc('\r');
         cursor_position += VGA_WIDTH - (cursor_position % VGA_WIDTH);
     } else if (c == '\r') {
         cursor_position -= cursor_position % VGA_WIDTH;
@@ -58,6 +81,13 @@ static void console_putc(char c)
 
 void console_init(void)
 {
+    serial_init();
+
+    /* Write a bright banner to VGA to test it's working */
+    for (uint32_t i = 0; i < VGA_WIDTH * VGA_HEIGHT; ++i) {
+        VGA_TEXT_BUFFER[i] = (uint16_t)(' ') | ((uint16_t)0x1F << 8);
+    }
+    /* Reset to default color */
     for (uint32_t i = 0; i < VGA_WIDTH * VGA_HEIGHT; ++i) {
         VGA_TEXT_BUFFER[i] = (uint16_t)(' ') | ((uint16_t)VGA_DEFAULT_COLOR << 8);
     }

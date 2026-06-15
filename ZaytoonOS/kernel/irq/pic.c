@@ -1,6 +1,5 @@
 #include "kernel/irq/pic.h"
 #include "kernel/arch/io.h"
-#include "kernel/kernel/printk.h"
 
 #define PIC1_COMMAND 0x20
 #define PIC1_DATA    0x21
@@ -27,7 +26,6 @@ void pic_remap(void)
 
     outb(PIC1_DATA, 0xFF);
     outb(PIC2_DATA, 0xFF);
-    printk("[irq] PIC remapped");
 }
 
 void pic_mask(u8 irq_line)

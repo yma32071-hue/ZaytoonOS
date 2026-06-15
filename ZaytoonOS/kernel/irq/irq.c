@@ -1,6 +1,5 @@
 #include "kernel/irq/irq.h"
 #include "kernel/irq/pic.h"
-#include "kernel/kernel/printk.h"
 
 static irq_handler_t irq_table[256];
 
@@ -12,7 +11,6 @@ void irq_init(void)
 
     pic_remap();
     pic_unmask(0);
-    printk("[irq] interrupt table initialized");
 }
 
 void irq_disable(void)
@@ -37,5 +35,4 @@ void irq_dispatch(unsigned int irq)
 void irq_enable(void)
 {
     asm volatile("sti");
-    printk("[irq] interrupts enabled");
 }

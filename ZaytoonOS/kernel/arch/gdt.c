@@ -1,65 +1,62 @@
 #include "kernel/arch/gdt.h"
-#include "kernel/kernel/printk.h"
 #include "kernel/types.h"
-#include <string.h>
 
 struct gdt_entry {
     u16 limit_low;
     u16 base_low;
-    u8 base_middle;
-    u8 access;
-    u8 granularity;
-    u8 base_high;
-} __attribute__((packed));
-
-struct gdt_entry_long {
-    u32 base_upper;
-    u32 reserved;
+    u8  base_mid;
+    u8  access;
+    u8  gran;
+    u8  base_high;
 } __attribute__((packed));
 
 struct gdt_ptr {
     u16 limit;
-    u64 base;
+    u32 base;
 } __attribute__((packed));
 
-static struct gdt_entry gdt[5];
-static struct gdt_entry_long gdt_tss_long;
-static unsigned char gdt_table[sizeof(gdt) + sizeof(gdt_tss_long)];
+#define GDT_ENTRIES 6
+unsigned char gdt_table[GDT_ENTRIES * 8];
 static struct gdt_ptr gdt_descriptor;
 
-static void set_gdt_entry(int index, u32 base, u32 limit, u8 access, u8 gran)
+static void set_entry(int index, u32 base, u32 limit, u8 access, u8 gran)
 {
-    gdt[index].limit_low    = (u16)(limit & 0xFFFF);
-    gdt[index].base_low     = (u16)(base & 0xFFFF);
-    gdt[index].base_middle  = (u8)((base >> 16) & 0xFF);
-    gdt[index].access       = access;
-    gdt[index].granularity  = (u8)((limit >> 16) & 0x0F);
-    gdt[index].granularity |= gran & 0xF0;
-    gdt[index].base_high    = (u8)((base >> 24) & 0xFF);
+    struct gdt_entry *e = (struct gdt_entry *)&gdt_table[index * 8];
+    e->limit_low = (u16)(limit & 0xFFFF);
+    e->base_low  = (u16)(base & 0xFFFF);
+    e->base_mid  = (u8)((base >> 16) & 0xFF);
+    e->access    = access;
+    e->gran      = (u8)(((limit >> 16) & 0x0F) | (gran & 0xF0));
+    e->base_high = (u8)((base >> 24) & 0xFF);
 }
 
-void gdt_set_tss(uint64_t base, uint32_t limit)
+void gdt_set_tss(u32 base, u32 limit)
 {
-    set_gdt_entry(4, (u32)(base & 0xFFFFFFFFu), limit, 0x89, 0x00);
-    gdt_tss_long.base_upper = (uint32_t)(base >> 32);
-    gdt_tss_long.reserved = 0;
+    set_entry(5, base, limit, 0x89, 0x00);
 }
 
 void gdt_init(void)
 {
-    memset(&gdt, 0, sizeof(gdt));
-    set_gdt_entry(0, 0, 0, 0, 0);
-    set_gdt_entry(1, 0, 0x000FFFFF, 0x9A, 0xA0);
-    set_gdt_entry(2, 0, 0x000FFFFF, 0x92, 0xA0);
-    set_gdt_entry(3, 0, 0x000FFFFF, 0xFA, 0xA0);
-    set_gdt_entry(4, 0, 0, 0, 0);
-
-    memcpy(gdt_table, gdt, sizeof(gdt));
-    memcpy(gdt_table + sizeof(gdt), &gdt_tss_long, sizeof(gdt_tss_long));
+    set_entry(0, 0, 0, 0, 0);
+    set_entry(1, 0, 0xFFFFF, 0x9A, 0xCF);
+    set_entry(2, 0, 0xFFFFF, 0x92, 0xCF);
+    set_entry(3, 0, 0xFFFFF, 0xFA, 0xCF);
+    set_entry(4, 0, 0xFFFFF, 0xF2, 0xCF);
+    set_entry(5, 0, 0, 0, 0);
 
     gdt_descriptor.limit = sizeof(gdt_table) - 1;
-    gdt_descriptor.base = (u64)gdt_table;
+    gdt_descriptor.base  = (u32)gdt_table;
 
-    asm volatile("lgdt %0" : : "m"(gdt_descriptor));
-    printk("[arch] GDT loaded");
+    asm volatile(
+        "lgdt %0\n\t"
+        "ljmp $0x08, $1f\n\t"
+        "1:\n\t"
+        "mov $0x10, %%eax\n\t"
+        "mov %%eax, %%ds\n\t"
+        "mov %%eax, %%es\n\t"
+        "mov %%eax, %%fs\n\t"
+        "mov %%eax, %%gs\n\t"
+        "mov %%eax, %%ss\n\t"
+        : : "m"(gdt_descriptor) : "eax", "memory"
+    );
 }

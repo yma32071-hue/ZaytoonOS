@@ -12,7 +12,6 @@
 
 static task_t *current_task;
 static task_t *task_list;
-static context_t scheduler_context;
 
 static void task_wrapper(void)
 {
@@ -34,18 +33,12 @@ void task_init(void)
     current_task = NULL;
 }
 
-static inline void load_cr3(uint32_t *cr3)
-{
-    uint32_t value = (uint32_t)cr3;
-    asm volatile("mov %0, %%cr3" :: "r"(value));
-}
-
 void task_add(void (*entry)(void), const char *name)
 {
     task_t *task = kmalloc(sizeof(task_t));
     void *stack = kmalloc(KERNEL_TASK_STACK_SIZE);
     if (!task || !stack) {
-        printk("[task] allocation failed for %s\n", name);
+        printk("[task] allocation failed for %s", name);
         return;
     }
 
@@ -63,7 +56,7 @@ void task_add(void (*entry)(void), const char *name)
     task->user_stack = 0;
     task->page_table = NULL;
     task->next = NULL;
-    
+
     task->context.edi = 0;
     task->context.esi = 0;
     task->context.ebx = 0;
@@ -80,14 +73,14 @@ void task_add(void (*entry)(void), const char *name)
         tail->next = task;
     }
 
-    printk("[task] registered %s\n", name);
+    printk("[task] registered %s", name);
 }
 
 void task_add_user(uint32_t entry, uint32_t stack, uint32_t *page_table, const char *name)
 {
     task_t *task = kmalloc(sizeof(task_t));
     if (!task) {
-        printk("[task] allocation failed for %s\n", name);
+        printk("[task] allocation failed for %s", name);
         return;
     }
 
@@ -116,7 +109,7 @@ void task_add_user(uint32_t entry, uint32_t stack, uint32_t *page_table, const c
         tail->next = task;
     }
 
-    printk("[task] registered user task %s\n", name);
+    printk("[task] registered user task %s", name);
 }
 
 void task_yield(void)
@@ -140,7 +133,6 @@ void task_yield(void)
     }
     current_task = next;
     current_task->state = TASK_RUNNING;
-    printk("[task] switching to %s\n", current_task->name);
     context_switch(&prev->context, &current_task->context);
 }
 
@@ -152,11 +144,12 @@ void task_run(void)
 
     current_task = task_list;
     current_task->state = TASK_RUNNING;
-    printk("[task] starting %s\n", current_task->name);
-        if (current_task->user_task) {
-        load_cr3(current_task->page_table);
-        
-        // Call your assembly transition function directly
+
+    if (current_task->user_task) {
         enter_user_mode(current_task->user_entry, current_task->user_stack);
+    } else {
+        /* Jump into the first kernel task by switching context from a dummy */
+        context_t dummy;
+        context_switch(&dummy, &current_task->context);
     }
 }

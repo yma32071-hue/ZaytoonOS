@@ -10,6 +10,6 @@
 #define GDT_TSS         0x28
 
 void gdt_init(void);
-void gdt_set_tss(uint64_t base, uint32_t limit);
+void gdt_set_tss(uint32_t base, uint32_t limit);
 
 #endif /* ZAYTOONOS_ARCH_GDT_H */

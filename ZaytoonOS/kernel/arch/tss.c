@@ -1,27 +1,27 @@
 #include "kernel/arch/tss.h"
 #include "kernel/arch/gdt.h"
-#include "kernel/kernel/printk.h"
 #include "kernel/types.h"
 
-struct tss_entry {
-    u32 reserved0;
-    u64 rsp0;
-    u64 rsp1;
-    u64 rsp2;
-    u64 reserved1;
-    u64 ist1;
-    u64 ist2;
-    u64 ist3;
-    u64 ist4;
-    u64 ist5;
-    u64 ist6;
-    u64 ist7;
-    u64 reserved2;
-    u16 reserved3;
+struct tss32_entry {
+    u32 prev_tss;
+    u32 esp0;
+    u32 ss0;
+    u32 esp1;
+    u32 ss1;
+    u32 esp2;
+    u32 ss2;
+    u32 cr3;
+    u32 eip;
+    u32 eflags;
+    u32 eax, ecx, edx, ebx;
+    u32 esp, ebp, esi, edi;
+    u32 es, cs, ss, ds, fs, gs;
+    u32 ldt;
+    u16 trap;
     u16 io_map_base;
 } __attribute__((packed));
 
-static struct tss_entry tss;
+static struct tss32_entry tss;
 static u8 kernel_stack[8192] __attribute__((aligned(16)));
 
 void tss_init(void)
@@ -30,10 +30,10 @@ void tss_init(void)
         ((u8 *)&tss)[i] = 0;
     }
 
-    tss.rsp0 = (u64)kernel_stack + sizeof(kernel_stack);
+    tss.ss0  = GDT_KERNEL_DATA;
+    tss.esp0 = (u32)((u8 *)kernel_stack + sizeof(kernel_stack));
     tss.io_map_base = sizeof(tss);
 
-    gdt_set_tss((uint64_t)&tss, sizeof(tss) - 1);
-    asm volatile("ltr %%ax" :: "a"((uint16_t)0x28));
-    printk("[tss] task state segment loaded");
+    gdt_set_tss((u32)&tss, sizeof(tss) - 1);
+    asm volatile("ltr %%ax" :: "a"((u16)GDT_TSS));
 }

@@ -52,11 +52,11 @@ if you want to compile the .elf into an iso first put it in the boot folder in i
 grub-mkrescue -o /workspaces/ZaytoonOS/zaytoonos.iso /workspaces/ZaytoonOS/iso
 
 ```
-IF you have ```grub-common```
+IF you have ```grub-common``` and it's packages
 
-if you don't have ```grub-common``` run
+if you don't have ```grub-common``` or the other packages run
 ```bash
-sudo apt update && sudo apt install grub-common
+sudo apt install -y grub-common grub2-common xorriso grub-pc-bin python3
 ```
 in linux
 

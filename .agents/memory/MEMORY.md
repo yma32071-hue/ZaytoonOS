@@ -1,1 +1,2 @@
 - [ZaytoonOS boot fixes](zaytoonos-boot.md) — five root causes fixed to get the 32-bit x86 kernel booting under GRUB2/QEMU/noVNC
+- [ZaytoonOS build and run setup](zaytoonos-setup.md) — deps, noVNC redirect, VGA charset, keyboard driver, capp readchar callback

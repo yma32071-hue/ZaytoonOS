@@ -1,47 +1,33 @@
 #include "kernel/apps/capp.h"
 #include "kernel/apps/capp_format.h"
 #include "kernel/drivers/console.h"
+#include "kernel/drivers/keyboard.h"
 #include "kernel/kernel/printk.h"
-#include "kernel/shell/string.h"
 #include "kernel/kernel/sched.h"
+#include "kernel/shell/string.h"
 
 static int sysinfo_main(const capp_context_t *ctx);
 static int hello_main(const capp_context_t *ctx);
 static int ticks_main(const capp_context_t *ctx);
+static int commandprompt_main(const capp_context_t *ctx);
 
 static const capp_image_t native_capps[] = {
-    { CAPP_MAGIC, CAPP_ABI_VERSION, sizeof(capp_image_t), "hello.capp", "native sample C application", hello_main },
-    { CAPP_MAGIC, CAPP_ABI_VERSION, sizeof(capp_image_t), "sysinfo.capp", "native kernel and runtime information", sysinfo_main },
-    { CAPP_MAGIC, CAPP_ABI_VERSION, sizeof(capp_image_t), "ticks.capp", "native scheduler uptime report", ticks_main },
+    { CAPP_MAGIC, CAPP_ABI_VERSION, sizeof(capp_image_t), "hello.capp",         "print a greeting",                     hello_main         },
+    { CAPP_MAGIC, CAPP_ABI_VERSION, sizeof(capp_image_t), "sysinfo.capp",       "kernel and runtime information",       sysinfo_main       },
+    { CAPP_MAGIC, CAPP_ABI_VERSION, sizeof(capp_image_t), "ticks.capp",         "scheduler uptime tick counter",        ticks_main         },
+    { CAPP_MAGIC, CAPP_ABI_VERSION, sizeof(capp_image_t), "commandprompt.capp", "interactive enhanced command prompt",  commandprompt_main },
 };
 
-static void capp_write(const char *message)
-{
-    console_write(message);
-}
-
-static void capp_writeln(const char *message)
-{
-    console_write(message);
-    console_write("\n");
-}
-
-static u64 capp_ticks(void)
-{
-    return sched_ticks();
-}
+static void capp_write(const char *msg)   { console_write(msg); }
+static void capp_writeln(const char *msg) { console_write(msg); console_write("\n"); }
+static u64  capp_ticks(void)              { return sched_ticks(); }
 
 static const char *basename(const char *path)
 {
     const char *name = path;
-    if (!path) {
-        return NULL;
-    }
-
+    if (!path) return NULL;
     for (const char *p = path; *p; ++p) {
-        if (*p == '/' || *p == '\\') {
-            name = p + 1;
-        }
+        if (*p == '/' || *p == '\\') name = p + 1;
     }
     return name;
 }
@@ -55,49 +41,34 @@ static bool native_valid(const capp_image_t *image)
 static const capp_image_t *native_find(const char *path)
 {
     const char *name = basename(path);
-    if (!name || !*name) {
-        return NULL;
-    }
-
+    if (!name || !*name) return NULL;
     for (u32 i = 0; i < (u32)(sizeof(native_capps) / sizeof(native_capps[0])); ++i) {
-        if (shell_streq_ci(name, native_capps[i].name)) {
-            return &native_capps[i];
-        }
+        if (shell_streq_ci(name, native_capps[i].name)) return &native_capps[i];
     }
     return NULL;
 }
 
-static bool blob_header_valid(const capp_blob_t *blob, const capp_file_header_t **header_out)
+static bool blob_header_valid(const capp_blob_t *blob, const capp_file_header_t **hdr_out)
 {
-    if (!blob || !blob->data || blob->size < sizeof(capp_file_header_t)) {
+    if (!blob || !blob->data || blob->size < sizeof(capp_file_header_t)) return false;
+    const capp_file_header_t *h = (const capp_file_header_t *)blob->data;
+    if (h->magic != CAPP_FILE_MAGIC || h->abi_version != CAPP_FILE_ABI_VERSION ||
+        h->header_size != sizeof(capp_file_header_t) ||
+        h->record_offset < sizeof(capp_file_header_t) || h->record_offset > blob->size)
         return false;
-    }
-
-    const capp_file_header_t *header = (const capp_file_header_t *)blob->data;
-    if (header->magic != CAPP_FILE_MAGIC || header->abi_version != CAPP_FILE_ABI_VERSION ||
-        header->header_size != sizeof(capp_file_header_t) || header->record_offset < sizeof(capp_file_header_t) ||
-        header->record_offset > blob->size) {
-        return false;
-    }
-
-    *header_out = header;
+    *hdr_out = h;
     return true;
 }
 
-static const capp_blob_t *blob_find(const char *path, const capp_file_header_t **header_out)
+static const capp_blob_t *blob_find(const char *path, const capp_file_header_t **hdr_out)
 {
     const char *name = basename(path);
-    if (!name || !*name) {
-        return NULL;
-    }
-
+    if (!name || !*name) return NULL;
     for (u32 i = 0; i < generated_capp_count; ++i) {
-        const capp_file_header_t *header = NULL;
-        if (!blob_header_valid(&generated_capps[i], &header)) {
-            continue;
-        }
-        if (shell_streq_ci(name, header->name) || shell_streq_ci(name, generated_capps[i].filename)) {
-            *header_out = header;
+        const capp_file_header_t *h = NULL;
+        if (!blob_header_valid(&generated_capps[i], &h)) continue;
+        if (shell_streq_ci(name, h->name) || shell_streq_ci(name, generated_capps[i].filename)) {
+            *hdr_out = h;
             return &generated_capps[i];
         }
     }
@@ -106,66 +77,51 @@ static const capp_blob_t *blob_find(const char *path, const capp_file_header_t *
 
 static void write_args(const capp_context_t *ctx)
 {
-    for (int i = 1; i < ctx->argc; ++i) {
-        ctx->write(" ");
-        ctx->write(ctx->argv[i]);
-    }
+    for (int i = 1; i < ctx->argc; ++i) { ctx->write(" "); ctx->write(ctx->argv[i]); }
     ctx->writeln("");
 }
 
-static int blob_exec(const capp_blob_t *blob, const capp_file_header_t *header, const capp_context_t *ctx)
+static int blob_exec(const capp_blob_t *blob, const capp_file_header_t *hdr, const capp_context_t *ctx)
 {
-    u32 offset = header->record_offset;
+    u32 off = hdr->record_offset;
     int exit_code = 0;
-
-    for (u32 record_index = 0; record_index < header->record_count; ++record_index) {
-        if (offset + sizeof(capp_record_header_t) > blob->size) {
-            printk("[capp] truncated record table in %s", header->name);
+    for (u32 ri = 0; ri < hdr->record_count; ++ri) {
+        if (off + sizeof(capp_record_header_t) > blob->size) {
+            printk("[capp] truncated record table in %s", hdr->name);
             return -1;
         }
-
-        const capp_record_header_t *record = (const capp_record_header_t *)(blob->data + offset);
-        offset += sizeof(capp_record_header_t);
-        if (offset + record->length > blob->size) {
-            printk("[capp] truncated record payload in %s", header->name);
+        const capp_record_header_t *rec = (const capp_record_header_t *)(blob->data + off);
+        off += sizeof(capp_record_header_t);
+        if (off + rec->length > blob->size) {
+            printk("[capp] truncated record payload in %s", hdr->name);
             return -1;
         }
-
-        const char *payload = (const char *)(blob->data + offset);
-        switch (record->opcode) {
-        case CAPP_OP_PRINT:
-            ctx->write(payload);
-            break;
-        case CAPP_OP_PRINTLN:
-            ctx->writeln(payload);
-            break;
-        case CAPP_OP_ARGS:
-            write_args(ctx);
-            break;
+        const char *payload = (const char *)(blob->data + off);
+        switch (rec->opcode) {
+        case CAPP_OP_PRINT:   ctx->write(payload);   break;
+        case CAPP_OP_PRINTLN: ctx->writeln(payload);  break;
+        case CAPP_OP_ARGS:    write_args(ctx);         break;
         case CAPP_OP_TICKS: {
             char buf[64];
             shell_format_u64(buf, sizeof(buf), "ticks=", ctx->uptime_ticks());
             ctx->writeln(buf);
         } break;
         case CAPP_OP_EXIT:
-            if (record->length >= sizeof(int)) {
-                exit_code = *(const int *)payload;
-            }
+            if (rec->length >= sizeof(int)) exit_code = *(const int *)payload;
             return exit_code;
         default:
-            printk("[capp] unsupported opcode %u in %s", record->opcode, header->name);
+            printk("[capp] unsupported opcode %u in %s", rec->opcode, hdr->name);
             return -1;
         }
-
-        offset += record->length;
+        off += rec->length;
     }
-
     return exit_code;
 }
 
 void capp_init(void)
 {
-    printk("[capp] registered %u application packages (%u packaged, %u native)", capp_count(), generated_capp_count,
+    printk("[capp] %u apps registered (%u packaged, %u native)",
+           capp_count(), generated_capp_count,
            (u32)(sizeof(native_capps) / sizeof(native_capps[0])));
 }
 
@@ -176,19 +132,16 @@ u32 capp_count(void)
 
 bool capp_exists(const char *path)
 {
-    const capp_file_header_t *header = NULL;
-    return blob_find(path, &header) != NULL || native_find(path) != NULL;
+    const capp_file_header_t *h = NULL;
+    return blob_find(path, &h) != NULL || native_find(path) != NULL;
 }
 
 void capp_list(void (*writer)(const char *line))
 {
     for (u32 i = 0; i < generated_capp_count; ++i) {
-        const capp_file_header_t *header = NULL;
-        if (blob_header_valid(&generated_capps[i], &header)) {
-            writer(header->name);
-        }
+        const capp_file_header_t *h = NULL;
+        if (blob_header_valid(&generated_capps[i], &h)) writer(h->name);
     }
-
     for (u32 i = 0; i < (u32)(sizeof(native_capps) / sizeof(native_capps[0])); ++i) {
         writer(native_capps[i].name);
     }
@@ -197,39 +150,34 @@ void capp_list(void (*writer)(const char *line))
 int capp_exec(const char *path, int argc, const char *const *argv)
 {
     capp_context_t ctx = {
-        .argc = argc,
-        .argv = argv,
-        .write = capp_write,
-        .writeln = capp_writeln,
+        .argc         = argc,
+        .argv         = argv,
+        .write        = capp_write,
+        .writeln      = capp_writeln,
         .uptime_ticks = capp_ticks,
+        .readchar     = keyboard_getchar,
     };
 
-    const capp_file_header_t *header = NULL;
-    const capp_blob_t *blob = blob_find(path, &header);
-    if (blob) {
-        printk("[capp] exec packaged %s", header->name);
-        return blob_exec(blob, header, &ctx);
-    }
+    const capp_file_header_t *hdr = NULL;
+    const capp_blob_t *blob = blob_find(path, &hdr);
+    if (blob) return blob_exec(blob, hdr, &ctx);
 
     const capp_image_t *image = native_find(path);
     if (!native_valid(image)) {
-        printk("[capp] invalid or missing package: %s", path ? path : "<null>");
+        printk("[capp] not found: %s", path ? path : "<null>");
         return -1;
     }
-
-    printk("[capp] exec native %s", image->name);
     return image->entry(&ctx);
 }
 
+/* ─── native apps ───────────────────────────────────────────────────────── */
+
 static int hello_main(const capp_context_t *ctx)
 {
-    ctx->writeln("Hello from a native .capp executable written in C.");
+    ctx->writeln("Hello from ZaytoonOS — a native .capp executable.");
     if (ctx->argc > 1) {
-        ctx->write("Arguments:");
-        for (int i = 1; i < ctx->argc; ++i) {
-            ctx->write(" ");
-            ctx->write(ctx->argv[i]);
-        }
+        ctx->write("args:");
+        for (int i = 1; i < ctx->argc; ++i) { ctx->write(" "); ctx->write(ctx->argv[i]); }
         ctx->writeln("");
     }
     return 0;
@@ -238,18 +186,113 @@ static int hello_main(const capp_context_t *ctx)
 static int sysinfo_main(const capp_context_t *ctx)
 {
     char buf[96];
-    ctx->writeln("ZaytoonOS CAPP ABI v1");
-    shell_format_u64(buf, sizeof(buf), "uptime ticks: ", ctx->uptime_ticks());
-    ctx->writeln(buf);
-    shell_format_u64(buf, sizeof(buf), "registered capps: ", capp_count());
-    ctx->writeln(buf);
+    ctx->writeln("─────────────── ZaytoonOS System Info ───────────────");
+    ctx->writeln("  Arch    : x86 32-bit protected mode");
+    ctx->writeln("  Bootload: GRUB2 multiboot2");
+    ctx->writeln("  Memory  : bump heap + identity-mapped paging");
+    ctx->writeln("  Sched   : preemptive round-robin (timer IRQ 0)");
+    shell_format_u64(buf, sizeof(buf), "  Uptime  : ", ctx->uptime_ticks());
+    ctx->write(buf);
+    ctx->writeln(" ticks");
+    shell_format_u64(buf, sizeof(buf), "  Apps    : ", capp_count());
+    ctx->write(buf);
+    ctx->writeln(" registered");
+    ctx->writeln("─────────────────────────────────────────────────────");
     return 0;
 }
 
 static int ticks_main(const capp_context_t *ctx)
 {
     char buf[64];
-    shell_format_u64(buf, sizeof(buf), "ticks=", ctx->uptime_ticks());
-    ctx->writeln(buf);
+    shell_format_u64(buf, sizeof(buf), "uptime = ", ctx->uptime_ticks());
+    ctx->write(buf);
+    ctx->writeln(" ticks");
     return 0;
+}
+
+/* ─── commandprompt.capp ─────────────────────────────────────────────────
+   An enhanced interactive sub-prompt with its own command set.
+   Type  EXIT  or  QUIT  to return to the parent shell.
+──────────────────────────────────────────────────────────────────────── */
+static int commandprompt_main(const capp_context_t *ctx)
+{
+#define CP_LINE 128
+    char line[CP_LINE];
+    u32 pos = 0;
+
+    ctx->writeln("");
+    ctx->writeln("╔══════════════════════════════════════════╗");
+    ctx->writeln("║   ZaytoonOS Enhanced Command Prompt      ║");
+    ctx->writeln("║   Type HELP for commands, EXIT to leave  ║");
+    ctx->writeln("╚══════════════════════════════════════════╝");
+    ctx->writeln("");
+
+    for (;;) {
+        ctx->write("CMD> ");
+        pos = 0;
+
+        for (;;) {
+            char c = ctx->readchar();
+
+            if (c == '\n' || c == '\r') {
+                line[pos] = '\0';
+                ctx->write("\n");
+                break;
+            } else if (c == '\b') {
+                if (pos > 0) {
+                    pos--;
+                    ctx->write("\b \b");
+                }
+            } else if ((unsigned char)c >= 32 && pos < CP_LINE - 1) {
+                char ch[2] = {c, 0};
+                line[pos++] = c;
+                ctx->write(ch);
+            }
+        }
+
+        if (pos == 0) continue;
+
+        if (shell_streq_ci(line, "EXIT") || shell_streq_ci(line, "QUIT")) {
+            ctx->writeln("Returning to shell.");
+            break;
+
+        } else if (shell_streq_ci(line, "HELP") || shell_streq_ci(line, "?")) {
+            ctx->writeln("  HELP / ?    this list");
+            ctx->writeln("  ABOUT       OS information");
+            ctx->writeln("  VER         kernel version string");
+            ctx->writeln("  UPTIME      scheduler tick counter");
+            ctx->writeln("  SYSINFO     detailed system report");
+            ctx->writeln("  APPS        list installed .capp programs");
+            ctx->writeln("  EXIT        return to parent shell");
+
+        } else if (shell_streq_ci(line, "ABOUT")) {
+            ctx->writeln("ZaytoonOS — minimalist x86 32-bit kernel");
+            ctx->writeln("Written in C, assembled with GAS, booted via GRUB2.");
+            ctx->writeln("Architecture: protected mode, flat segments, IDT, PIC.");
+
+        } else if (shell_streq_ci(line, "VER")) {
+            ctx->writeln("ZaytoonOS kernel v1.0  (x86 32-bit, multiboot2)");
+
+        } else if (shell_streq_ci(line, "UPTIME")) {
+            char buf[64];
+            shell_format_u64(buf, sizeof(buf), "uptime = ", ctx->uptime_ticks());
+            ctx->write(buf);
+            ctx->writeln(" ticks");
+
+        } else if (shell_streq_ci(line, "SYSINFO")) {
+            sysinfo_main(ctx);
+
+        } else if (shell_streq_ci(line, "APPS")) {
+            ctx->writeln("Installed .capp programs:");
+            capp_list(ctx->writeln);
+
+        } else {
+            ctx->write("Unknown: ");
+            ctx->writeln(line);
+            ctx->writeln("Type HELP for available commands.");
+        }
+    }
+
+    return 0;
+#undef CP_LINE
 }

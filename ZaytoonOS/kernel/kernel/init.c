@@ -10,17 +10,6 @@
 #include "kernel/fs/vfs.h"
 #include "kernel/shell/commandline.h"
 
-static void user_task(void)
-{
-    while (1) {
-        printk("[task] foreground task active");
-        for (volatile u32 delay = 0; delay < 500000u; ++delay) {
-            asm volatile("nop");
-        }
-        task_yield();
-    }
-}
-
 void kernel_init(void)
 {
     console_init();
@@ -29,12 +18,11 @@ void kernel_init(void)
     capp_init();
     vfs_init();
     shell_init();
-    task_add(shell_run_demo, "shell");
-    task_add(user_task, "foreground");
+    task_add(shell_run, "shell");
     task_add(kernel_idle, "idle");
     sched_init();
     register_irq_handler(32, schedule);
-    printk("[kernel] ZaytoonOS initialized");
+    printk("[kernel] ZaytoonOS initialized - waiting for keyboard input");
     irq_enable();
 }
 

@@ -21,6 +21,7 @@ static struct idt_ptr idt_descriptor;
 
 extern void default_interrupt_stub(void);
 extern void timer_interrupt_stub(void);
+extern void keyboard_interrupt_stub(void);
 
 static void set_idt_gate(u8 vector, void *handler, u16 selector, u8 type_attr)
 {
@@ -42,6 +43,12 @@ void timer_interrupt_handler(void)
     pic_eoi(0);
 }
 
+void keyboard_interrupt_handler(void)
+{
+    irq_dispatch(33);
+    pic_eoi(1);
+}
+
 void idt_init(void)
 {
     for (u16 vector = 0; vector < 256; ++vector) {
@@ -49,6 +56,7 @@ void idt_init(void)
     }
 
     set_idt_gate(32, timer_interrupt_stub, 0x08, 0x8E);
+    set_idt_gate(33, keyboard_interrupt_stub, 0x08, 0x8E);
 
     idt_descriptor.limit = sizeof(idt) - 1;
     idt_descriptor.base  = (u32)&idt;

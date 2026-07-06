@@ -61,7 +61,11 @@ static void cmd_help(void)
     sh_writeln("  PS             running tasks");
     sh_writeln("  UPTIME         scheduler ticks");
     sh_writeln("  RUN <app.capp> execute a .capp program");
-    sh_writeln("  <app.capp>     run directly by name");
+    sh_writeln("  <app.capp> [args] run .capp directly by name with optional args");
+    sh_writeln("");
+    sh_writeln("EXAMPLES:");
+    sh_writeln("  hello.capp");
+    sh_writeln("  startup.capp (runs on boot if exists)");
 }
 
 static void cmd_cls(void)
@@ -154,6 +158,15 @@ void shell_run(void)
     sh_writeln("ZaytoonOS Command Processor v1.0");
     sh_writeln("Type HELP for available commands.");
     console_write("\n");
+
+    /* Try to run startup.capp if it exists */
+    if (capp_exists("startup.capp")) {
+        sh_writeln("Executing startup.capp...");
+        const char *startup_argv[] = { "startup.capp" };
+        capp_exec("startup.capp", 1, startup_argv);
+        console_write("\n");
+    }
+
     sh_prompt();
 
     for (;;) {

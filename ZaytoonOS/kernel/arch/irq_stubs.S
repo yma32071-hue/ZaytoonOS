@@ -50,3 +50,27 @@ timer_interrupt_stub:
     pop ebx
     pop eax
     iret
+
+.global keyboard_interrupt_stub
+.type keyboard_interrupt_stub, @function
+keyboard_interrupt_stub:
+    # Push general-purpose 32-bit registers
+    push eax
+    push ebx
+    push ecx
+    push edx
+    push esi
+    push edi
+    push ebp
+    
+    call keyboard_interrupt_handler
+    
+    # Pop in absolute reverse order
+    pop ebp
+    pop edi
+    pop esi
+    pop edx
+    pop ecx
+    pop ebx
+    pop eax
+    iret
